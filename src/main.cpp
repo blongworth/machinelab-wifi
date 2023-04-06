@@ -2,8 +2,17 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
+// wifi credentials and site for posting
 #include "setup.h"
+
+const long utcOffsetInSeconds = -14400;
+
+// Define NTP Client to get time
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
 // HTTP endpoint for POSTing data
 String site= POST_URL;
@@ -31,8 +40,8 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
   WiFi.begin(ssid, password);  //Connect to the WiFi network 
+  timeClient.begin();
 }
-
 
 void loop(){
   // Blink the LED while connecting
@@ -52,6 +61,9 @@ void loop(){
     if (s.substring(0,1) == "^"){
       // tell teensy we have wifi connection and are ready for data
       Serial.print(1);
+    } else if (s.substring(0,1) == "$") {
+      timeClient.update();
+      Serial.println(timeClient.getEpochTime());
     } else {
       // setup connection and POST data
       HTTPClient http;    //Declare object of class HTTPClient
@@ -78,3 +90,4 @@ void loop(){
     digitalWrite(LED_BUILTIN, ledState);
   }
 }
+
