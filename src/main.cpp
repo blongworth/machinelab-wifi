@@ -18,12 +18,17 @@ int ndx = 0;
 char receivedChars[1000];
 char rc;
 
+// stuff for blink-while-connected
+int ledState = LOW;
+unsigned long previousMillis = 0;
+const long interval = 2000;
+
 // Set your access point network credentials
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PWD;
 
 void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);  
+  pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
   WiFi.begin(ssid, password);  //Connect to the WiFi network 
 }
@@ -33,9 +38,9 @@ void loop(){
   // Blink the LED while connecting
   while (WiFi.status() != WL_CONNECTED) {  //Wait for connection 
     digitalWrite(LED_BUILTIN, LOW);
-    delay(500);
+    delay(250);
     digitalWrite(LED_BUILTIN, HIGH);
-    delay(500);
+    delay(750);
   }
   
   if (Serial.available() > 0){
@@ -58,5 +63,18 @@ void loop(){
       // send 'a' to let teensy know data has been posted and move to next data packet
       Serial.print('a');
     }
+  }
+
+  // stuff for blink-while-connected
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    if (ledState == LOW) {
+      ledState = HIGH;
+    } else {
+      ledState = LOW;
+    }
+    digitalWrite(LED_BUILTIN, ledState);
   }
 }
