@@ -63,6 +63,7 @@ void loop(){
       Serial.print(1);
     } else if (s.substring(0,1) == "$") {
       timeClient.update();
+      Serial.print("T");
       Serial.println(timeClient.getEpochTime());
     } else {
       // setup connection and POST data
