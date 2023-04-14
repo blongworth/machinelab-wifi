@@ -14,6 +14,8 @@ Establish a wifi connection when started. LED will blink quickly (1Hz, .25s on) 
 
 Once connected blink led slowly (.5Hz, 1s on). 
 
-While connected, check for serial data from Teensy. If `^` received, reply with `1` to tell teensy that connection is active.
+While connected, check for serial data from Teensy. 
 
-If a string not starting with `^` is recieved, send it to the POST_URL via HTTP POST.
+* If `^` received, reply with `1` to tell teensy that connection is active. 
+* If a `$` is recieved, get NTP time from the network and return to teensy as a unix epoch timestamp prefaced by `T`.
+* If a string not starting with `^` or `$` is recieved, send it to the POST_URL via HTTP POST.
