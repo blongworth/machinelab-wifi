@@ -8,7 +8,7 @@
 // wifi credentials and site for posting
 #include "setup.h"
 
-const long utcOffsetInSeconds = -14400;
+const long utcOffsetInSeconds = UTC_OFFSET * 3600;
 
 // Define NTP Client to get time
 WiFiUDP ntpUDP;
