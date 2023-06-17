@@ -1,3 +1,13 @@
+/*!
+ * @file main.cpp
+ *
+ * Configure ESP8266 for use with MachineLab teensys
+ *
+ * Written by Brett Longworth
+ *
+ * BSD license, all text above must be included in any redistribution
+ */
+
 // Import required libraries
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
@@ -5,9 +15,13 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
+// flasher library
+#include "Flasher.h"
+
 // wifi credentials and site for posting
 #include "setup.h"
 
+// use offset from setup
 const long utcOffsetInSeconds = UTC_OFFSET * 3600;
 
 // Define NTP Client to get time
@@ -27,36 +41,34 @@ int ndx = 0;
 char receivedChars[1000];
 char rc;
 
-// stuff for blink-while-connected
-int ledState = LOW;
-unsigned long previousMillis = 0;
-const long conn_blink = 2000;
-const long dis_blink = 500;
+// stuff for flashing led
+const int conOn = 800;
+const int disOn = 100;
+Flasher flasher(LED_BUILTIN, 1000 - disOn, disOn); //NodeMCU LED's inverted, LOW = on
 
 // Set your access point network credentials
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PWD;
 
-void blink(unsigned long interval);
-
 void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
   WiFi.begin(ssid, password);  //Connect to the WiFi network 
   timeClient.begin();
+  flasher.begin();
 }
 
 void loop(){
-  // Blink the LED while connecting
+  // check for connection, answer appropriately
   if (WiFi.status() != WL_CONNECTED) { 
+    flasher.update(1000 - disOn, disOn);
     // if asked, say we have no connection
     if (Serial.available() > 0) {
       char query;
       query = Serial.read();
       if (query == '^') Serial.print(0);
     }
-    blink(dis_blink);
   } else {
+    flasher.update(1000 - conOn, conOn);
     if (Serial.available() > 0){
       int rlen = Serial.readBytesUntil('#', receivedChars, BUFFER_SIZE);
       rlen++;
@@ -82,14 +94,6 @@ void loop(){
         Serial.print('a');
       }
     }
-  blink(conn_blink);
   }
-}
-
-void blink(unsigned long interval) {
-  if (millis() - previousMillis >= interval) {
-    previousMillis = millis();
-    ledState = !ledState;
-    digitalWrite(LED_BUILTIN, ledState);
-  }
+  flasher.run();
 }
