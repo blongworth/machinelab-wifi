@@ -42,9 +42,11 @@ char receivedChars[1000];
 char rc;
 
 // stuff for flashing led
-const int conOn = 800;
+const int conOn = 2000;
+const int conOff = 2000;
 const int disOn = 100;
-Flasher flasher(LED_BUILTIN, 1000 - disOn, disOn); //NodeMCU LED's inverted, LOW = on
+const int disOff = 900;
+Flasher flasher(LED_BUILTIN, disOff, disOn); //NodeMCU LED's inverted, LOW = on
 
 // Set your access point network credentials
 const char* ssid = WIFI_SSID;
@@ -60,7 +62,7 @@ void setup() {
 void loop(){
   // check for connection, answer appropriately
   if (WiFi.status() != WL_CONNECTED) { 
-    flasher.update(1000 - disOn, disOn);
+    flasher.update(disOff, disOn);
     // if asked, say we have no connection
     if (Serial.available() > 0) {
       char query;
@@ -68,7 +70,7 @@ void loop(){
       if (query == '^') Serial.print(0);
     }
   } else {
-    flasher.update(1000 - conOn, conOn);
+    flasher.update(conOff, conOn);
     if (Serial.available() > 0){
       int rlen = Serial.readBytesUntil('#', receivedChars, BUFFER_SIZE);
       rlen++;
