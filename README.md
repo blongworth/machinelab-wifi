@@ -6,6 +6,8 @@ Firmware for ESP8266 NodeMCU 1.c0 clones. Connects to SSID using credentials in 
 
 Edit setup.h to include correct SSID and wifi password. Edit POST_URL to be the correct data upload endpoint for the deployment.
 
+Remove NodeMCU board from MachineLab PCB before flashing. Parent PCB uses power and serial lines shared with USB port.
+
 ### Arduino IDE
 
 Setup for deployment with PlatformIO. If deploying from ArduinoIDE, change `main.cpp` to `main.ino`, and move `main.ino` and `setup.h` to a folder 
