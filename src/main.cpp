@@ -14,11 +14,11 @@ const long utcOffsetInSeconds = UTC_OFFSET * 3600;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
-// HTTP endpoint for POSTing data
-String site= POST_URL;
+WiFiClient client;
+HTTPClient http;
+int resp = 0;
 
 const int BUFFER_SIZE = 300;
-WiFiClient client;
  
 String s;
 int numChars = 1000;
@@ -32,23 +32,22 @@ int ledState = LOW;
 unsigned long previousMillis = 0;
 const long conn_blink = 2000;
 const long dis_blink = 500;
+bool connected = 0;
 
 // Set your access point network credentials
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PWD;
 
 void blink(unsigned long interval);
+void rcvSerial();
+void handleSerial();
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
   WiFi.begin(ssid, password);  //Connect to the WiFi network 
-  timeClient.begin();
-}
 
-void loop(){
-  // Blink the LED while connecting
-  if (WiFi.status() != WL_CONNECTED) { 
+  while (WiFi.status() != WL_CONNECTED) { 
     // if asked, say we have no connection
     if (Serial.available() > 0) {
       char query;
@@ -56,34 +55,110 @@ void loop(){
       if (query == '^') Serial.print(0);
     }
     blink(dis_blink);
-  } else {
-    if (Serial.available() > 0){
-      int rlen = Serial.readBytesUntil('#', receivedChars, BUFFER_SIZE);
-      rlen++;
-      receivedChars[rlen] = '\0'; 
-      s=String(receivedChars);
-
-      if (s.substring(0,1) == "^"){
-        // tell teensy we have wifi connection and are ready for data
-        Serial.print(1);
-      } else if (s.substring(0,1) == "$") {
-        timeClient.update();
-        Serial.print("T");
-        Serial.println(timeClient.getEpochTime());
-      } else {
-        // setup connection and POST data
-        HTTPClient http;    //Declare object of class HTTPClient
-        http.begin(client,site);      //Specify request destination
-        http.addHeader("Content-Type", "text/plain");  //Specify content-type header
-        int httpCode = http.POST(s);   //Send the request
-        String payload = http.getString(); 
-        http.end();
-        // send 'a' to let teensy know data has been posted and move to next data packet
-        Serial.print('a');
-      }
-    }
-  blink(conn_blink);
+    delay(100);
   }
+  
+}
+
+void loop(){
+    rcvSerial();
+    handleSerial();
+    blink(conn_blink);
+}
+
+void rcvSerial() {
+  static bool recvInProgress = false;
+  static int ndx = 0;
+  const char END_MARKER = '#';
+
+  while (Serial.available() > 0 && !newData) {
+    char rc = Serial.read();
+
+    // Start collecting data
+    if (!recvInProgress) {
+      recvInProgress = true;
+      ndx = 0;
+    }
+
+    // Add character to buffer if not end marker
+    if (rc != END_MARKER) {
+      if (ndx < numChars - 1) {  // Leave space for null terminator
+        receivedChars[ndx++] = rc;
+      }
+    } else {
+      // End marker found, terminate string
+      receivedChars[ndx] = '\0';
+      recvInProgress = false;
+      newData = true;
+    }
+  }
+}
+
+void handleTimeRequest() {
+  timeClient.begin();
+  timeClient.update();
+  Serial.print("T");
+  Serial.println(timeClient.getEpochTime());
+  timeClient.end();
+}
+
+void handleCommandCheck() {
+  http.begin(client, GET_URL);
+  resp = http.GET();
+  String payload = http.getString();
+  
+  if (payload == "Start") {
+    Serial.write('1');
+  } else if (payload == "Stop") {
+    Serial.write('0');
+  } else {
+    Serial.write('2');
+  }
+  http.end();
+}
+
+void handleDataPacket() {
+  http.begin(client, POST_URL);
+  http.addHeader("Content-Type", "text/plain");
+  resp = http.POST(receivedChars);
+  http.getString(); // Clear the response buffer
+  http.end();
+  if (resp == 200) {
+    Serial.write('a');
+  } else {
+    Serial.write('0');
+  }
+}
+
+void handleSerial() {
+  if (!newData) return;
+
+  Serial.print("This just in ... ");
+  Serial.println(receivedChars);
+
+  // if not connected, send 0 in all cases
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.write('0');
+    newData = false;
+    return;
+  }
+
+  switch (receivedChars[0]) {
+    case '^':
+      Serial.write('1');
+      break;
+    case '$':
+      handleTimeRequest();
+      break;
+    case '?':
+      handleCommandCheck();
+      break;
+    default:
+      handleDataPacket();
+      break;
+  }
+
+  newData = false;
 }
 
 void blink(unsigned long interval) {
