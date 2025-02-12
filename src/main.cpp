@@ -69,21 +69,26 @@ void loop(){
 void rcvSerial() {
   static bool recvInProgress = false;
   static int ndx = 0;
-  const char END_MARKER = '#';
+  const char START_MARKER = '<';
+  const char END_MARKER = '>';
 
   while (Serial.available() > 0 && !newData) {
     char rc = Serial.read();
 
-    // Start collecting data
+    // Check for start marker if not already collecting
     if (!recvInProgress) {
-      recvInProgress = true;
-      ndx = 0;
+      if (rc == START_MARKER) {
+        recvInProgress = true;
+        ndx = 0;
+      }
+      continue;  // Skip rest of loop until start marker found
     }
 
     // Add character to buffer if not end marker
     if (rc != END_MARKER) {
       if (ndx < numChars - 1) {  // Leave space for null terminator
-        receivedChars[ndx++] = rc;
+        receivedChars[ndx] = rc;
+        ndx++;
       }
     } else {
       // End marker found, terminate string
@@ -132,10 +137,6 @@ void handleDataPacket() {
 
 void handleSerial() {
   if (!newData) return;
-
-  Serial.print("This just in ... ");
-  Serial.println(receivedChars);
-
   // if not connected, send 0 in all cases
   if (WiFi.status() != WL_CONNECTED) {
     Serial.write('0');
