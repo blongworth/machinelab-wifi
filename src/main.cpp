@@ -8,6 +8,8 @@
 // wifi credentials and site for posting
 #include "setup.h"
 
+const char compileTime[] = " Compiled on " __DATE__ " " __TIME__;
+
 const long utcOffsetInSeconds = UTC_OFFSET * 3600;
 
 // Define NTP Client to get time
@@ -16,7 +18,6 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
 WiFiClient client;
 HTTPClient http;
-int resp = 0;
 
 const int BUFFER_SIZE = 300;
  
@@ -46,6 +47,8 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
   WiFi.begin(ssid, password);  //Connect to the WiFi network 
+
+  Serial.printf("\n\nGEMS ESP %s \n", compileTime);
 
   while (WiFi.status() != WL_CONNECTED) { 
     // if asked, say we have no connection
@@ -102,33 +105,47 @@ void rcvSerial() {
 void handleTimeRequest() {
   timeClient.begin();
   timeClient.update();
-  Serial.print("T");
-  Serial.println(timeClient.getEpochTime());
+  if (timeClient.isTimeSet())
+  {
+    Serial.print("T");
+    Serial.println(timeClient.getEpochTime());
+  }
+  else
+  {
+    Serial.println("0");
+  }
   timeClient.end();
 }
 
 void handleCommandCheck() {
   http.begin(client, GET_URL);
-  resp = http.GET();
-  String payload = http.getString();
-  
-  if (payload == "Start") {
-    Serial.write('1');
-  } else if (payload == "Stop") {
-    Serial.write('0');
+  int httpCode = http.GET(); // Make the request
+  if (httpCode > 0) {
+    String payload = http.getString();
+    // Serial.println(httpCode);
+    // Serial.println(payload);
+    // TODO: change codes to make 0 error
+    if (payload == "Start") {
+      Serial.write('1');
+    } else if (payload == "Stop") {
+      Serial.write('0');
+    } else {
+      Serial.write('2');
+    }
   } else {
+    // Serial.println("Error on HTTP request");
     Serial.write('2');
   }
-  http.end();
+  http.end(); // Free the resources
 }
 
 void handleDataPacket() {
   http.begin(client, POST_URL);
   http.addHeader("Content-Type", "text/plain");
-  resp = http.POST(receivedChars);
-  http.getString(); // Clear the response buffer
+  int httpCode  = http.POST(receivedChars);
+  // http.getString();
   http.end();
-  if (resp == 200) {
+  if (httpCode == 200) {
     Serial.write('a');
   } else {
     Serial.write('0');
