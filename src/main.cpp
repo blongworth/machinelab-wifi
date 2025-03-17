@@ -69,6 +69,14 @@ void loop(){
     blink(conn_blink);
 }
 
+
+void sendSerial(Stream& serial, const char* data) {
+  serial.write('<');
+  serial.print(data);
+  serial.write('>');
+  serial.println();  // Add line ending
+}
+
 void rcvSerial() {
   static bool recvInProgress = false;
   static int ndx = 0;
@@ -107,8 +115,9 @@ void handleTimeRequest() {
   timeClient.update();
   if (timeClient.isTimeSet())
   {
-    Serial.print("T");
-    Serial.println(timeClient.getEpochTime());
+    Serial.print("<T");
+    Serial.print(timeClient.getEpochTime());
+    Serial.print(">");
   }
   else
   {
@@ -124,17 +133,17 @@ void handleCommandCheck() {
     String payload = http.getString();
     // Serial.println(httpCode);
     // Serial.println(payload);
-    // TODO: change codes to make 0 error
     if (payload == "Start") {
-      Serial.write('1');
+      sendSerial(Serial, "C1");
     } else if (payload == "Stop") {
-      Serial.write('0');
+      sendSerial(Serial, "C2");
     } else {
-      Serial.write('2');
+      Serial.println('0');
+      sendSerial(Serial, "C0");
     }
   } else {
     // Serial.println("Error on HTTP request");
-    Serial.write('2');
+    sendSerial(Serial, "0");
   }
   http.end(); // Free the resources
 }
@@ -146,9 +155,9 @@ void handleDataPacket() {
   // http.getString();
   http.end();
   if (httpCode == 200) {
-    Serial.write('a');
+    sendSerial(Serial, "Da");
   } else {
-    Serial.write('0');
+    sendSerial(Serial, "D0");
   }
 }
 
@@ -156,20 +165,23 @@ void handleSerial() {
   if (!newData) return;
   // if not connected, send 0 in all cases
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.write('0');
+    sendSerial(Serial, "0");
     newData = false;
     return;
   }
 
   switch (receivedChars[0]) {
     case '^':
-      Serial.write('1');
+      sendSerial(Serial, "1");
       break;
     case '$':
       handleTimeRequest();
       break;
     case '?':
       handleCommandCheck();
+      break;
+    case '*': // GPS request for compatibility with cell module
+      sendSerial(Serial, "G0");
       break;
     default:
       handleDataPacket();
