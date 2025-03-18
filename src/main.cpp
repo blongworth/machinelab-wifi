@@ -46,27 +46,19 @@ void handleSerial();
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
-  WiFi.begin(ssid, password);  //Connect to the WiFi network 
+  WiFi.begin(ssid, password);
 
   Serial.printf("\n\nGEMS ESP %s \n", compileTime);
-
-  while (WiFi.status() != WL_CONNECTED) { 
-    // if asked, say we have no connection
-    if (Serial.available() > 0) {
-      char query;
-      query = Serial.read();
-      if (query == '^') Serial.print(0);
-    }
-    blink(dis_blink);
-    delay(100);
-  }
-  
 }
 
 void loop(){
     rcvSerial();
     handleSerial();
-    blink(conn_blink);
+    if (WiFi.status() == WL_CONNECTED) {
+      blink(conn_blink);
+    } else {
+      blink(dis_blink);
+    }
 }
 
 
@@ -74,7 +66,7 @@ void sendSerial(Stream& serial, const char* data) {
   serial.write('<');
   serial.print(data);
   serial.write('>');
-  serial.println();  // Add line ending
+  serial.println();
 }
 
 void rcvSerial() {
