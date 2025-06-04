@@ -113,7 +113,7 @@ void handleTimeRequest() {
   }
   else
   {
-    Serial.println("0");
+    Serial.println("T0");
   }
   timeClient.end();
 }
@@ -130,12 +130,12 @@ void handleCommandCheck() {
     } else if (payload == "Stop") {
       sendSerial(Serial, "C2");
     } else {
-      Serial.println('0');
+      //Serial.println('0');
       sendSerial(Serial, "C0");
     }
   } else {
     // Serial.println("Error on HTTP request");
-    sendSerial(Serial, "0");
+    sendSerial(Serial, "C0");
   }
   http.end(); // Free the resources
 }
